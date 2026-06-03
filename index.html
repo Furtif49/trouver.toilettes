@@ -716,7 +716,8 @@
   }
 
   function sauvegarderVoteLocal(osm_id, valeur) {
-    localStorage.setItem('mon_vote_' + osm_id, valeur);
+    if (valeur === null) localStorage.removeItem('mon_vote_' + osm_id);
+    else                 localStorage.setItem('mon_vote_' + osm_id, valeur);
   }
 
   async function getVotes(osm_id) {
@@ -729,31 +730,32 @@
     } catch { return { ok: 0, ko: 0, date: null }; }
   }
 
+  // Retourne : { votes, action } où action = 'ajout' | 'retrait' | 'transfert'
   async function enregistrerVote(osm_id, estOk) {
     const nouveau = estOk ? 'ok' : 'ko';
     const ancien  = monVoteLocal(osm_id); // null, "ok" ou "ko"
+    const votes   = await getVotes(osm_id);
+    let action;
 
-    // Même vote que déjà exprimé → rien à faire
     if (ancien === nouveau) {
-      toast('Tu as déjà donné cet avis pour ce lieu.');
-      return await getVotes(osm_id);
+      // Reclique sur son propre vote → retrait
+      if (estOk) votes.ok = Math.max(0, (votes.ok || 0) - 1);
+      else        votes.ko = Math.max(0, (votes.ko || 0) - 1);
+      sauvegarderVoteLocal(osm_id, null);
+      action = 'retrait';
+    } else {
+      // Annuler l'ancien vote si existant
+      if (ancien === 'ok') votes.ok = Math.max(0, (votes.ok || 0) - 1);
+      if (ancien === 'ko') votes.ko = Math.max(0, (votes.ko || 0) - 1);
+      // Ajouter le nouveau
+      if (estOk) votes.ok = (votes.ok || 0) + 1;
+      else        votes.ko = (votes.ko || 0) + 1;
+      sauvegarderVoteLocal(osm_id, nouveau);
+      action = ancien ? 'transfert' : 'ajout';
     }
-
-    const votes = await getVotes(osm_id);
-
-    // Annuler l'ancien vote si existant
-    if (ancien === 'ok') votes.ok = Math.max(0, (votes.ok || 0) - 1);
-    if (ancien === 'ko') votes.ko = Math.max(0, (votes.ko || 0) - 1);
-
-    // Ajouter le nouveau vote
-    if (estOk) votes.ok = (votes.ok || 0) + 1;
-    else        votes.ko = (votes.ko || 0) + 1;
 
     votes.date = new Date().toLocaleDateString('fr-FR');
     votesCache[osm_id] = votes;
-
-    // Sauvegarder localement pour retrouver le vote au prochain clic
-    sauvegarderVoteLocal(osm_id, nouveau);
 
     try {
       await fetch(`${FIREBASE_URL}/votes/${osm_id}.json`, {
@@ -763,7 +765,7 @@
       });
     } catch { toast('Erreur réseau, vote non sauvegardé.'); }
 
-    return votes;
+    return { votes, action };
   }
 
   async function creerPopup(osm_id, cat, nom, acces, gmaps) {
@@ -821,13 +823,11 @@
   }
 
   async function signalerEtat(osm_id, estOk) {
-    const votes = await enregistrerVote(osm_id, estOk);
+    const { votes, action } = await enregistrerVote(osm_id, estOk);
     afficherVotes(osm_id, votes);
-    const ancien = monVoteLocal(osm_id);
-    // Le message tient compte du changement d'avis
-    if (estOk && ancien === 'ok') return; // message déjà affiché dans enregistrerVote
-    if (!estOk && ancien === 'ko') return;
-    toast(estOk ? '✅ Avis enregistré !' : '❌ Avis enregistré !');
+    if      (action === 'retrait')   toast('↩️ Vote retiré.');
+    else if (action === 'transfert') toast('🔄 Avis modifié.');
+    else                             toast(estOk ? '✅ Avis enregistré !' : '❌ Avis enregistré !');
   }
 
   // ═══════════════════════════════════════════════════
