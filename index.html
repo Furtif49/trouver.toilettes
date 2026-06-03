@@ -321,6 +321,25 @@
     .popup-sig-btn.hs          { background: #ffebee; color: #c62828; border: 1.5px solid #ef9a9a; }
     .popup-sig-btn.hs:active   { background: #ffcdd2; }
 
+    /* ── Sélecteur de rayon ── */
+    #rayon-select {
+      background: rgba(255,255,255,0.15);
+      color: white;
+      border: 1.5px solid rgba(255,255,255,0.35);
+      border-radius: 8px;
+      padding: 0 8px;
+      min-height: 44px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      text-align: center;
+    }
+    #rayon-select option { background: #1a6fbf; color: white; }
+
     /* ══════════════════════════════════
        BOUTON LOCALISATION
     ══════════════════════════════════ */
@@ -361,6 +380,16 @@
         />
         <ul id="suggestions"></ul>
       </div>
+
+      <!-- Sélecteur rayon — valeur par défaut 500m, cohérente pour une recherche rapide -->
+      <select id="rayon-select" title="Rayon de recherche">
+        <option value="250">250 m</option>
+        <option value="500" selected>500 m</option>
+        <option value="1000">1 km</option>
+        <option value="2000">2 km</option>
+        <option value="5000">5 km</option>
+        <option value="10000">10 km</option>
+      </select>
 
       <!-- Bouton géolocalisation -->
       <button id="btn-locate" title="Ma position" onclick="localiserMoi()">📍</button>
@@ -482,8 +511,8 @@
       pos => {
         btn.textContent = '📍';
         const { latitude: lat, longitude: lon } = pos.coords;
-        villeSelectionnee = { lat, lon, nom: 'Ma position', rayon: 1000 };
-        map.setView([lat, lon], 15);
+        villeSelectionnee = { lat, lon, nom: 'Ma position' };
+        map.setView([lat, lon], raisonZoom(getRayon()));
         document.getElementById('search-input').value = 'Ma position';
         toast('Position trouvée. Choisis une catégorie.');
       },
@@ -550,22 +579,20 @@
     hideSuggestions();
     searchInput.blur(); // ferme le clavier mobile
 
-    const type = r.type || r.class;
-    let rayon = 1500;
-    if (type === 'city')                               rayon = 5000;
-    if (type === 'town')                               rayon = 3000;
-    if (type === 'village')                            rayon = 1500;
-    if (type === 'county' || type === 'administrative') rayon = 8000;
+    villeSelectionnee = { lat: parseFloat(r.lat), lon: parseFloat(r.lon), nom };
+    map.setView([villeSelectionnee.lat, villeSelectionnee.lon], 15);
+  }
 
-    villeSelectionnee = { lat: parseFloat(r.lat), lon: parseFloat(r.lon), nom, rayon };
-    map.setView([villeSelectionnee.lat, villeSelectionnee.lon], raisonZoom(rayon));
+  // Rayon choisi par l'utilisateur (depuis le sélecteur)
+  function getRayon() {
+    return parseInt(document.getElementById('rayon-select').value, 10);
   }
 
   function raisonZoom(rayon) {
-    if (rayon >= 8000) return 12;
     if (rayon >= 5000) return 13;
-    if (rayon >= 3000) return 14;
-    return 15;
+    if (rayon >= 2000) return 14;
+    if (rayon >= 1000) return 15;
+    return 16;
   }
 
   // ═══════════════════════════════════════════════════
@@ -588,8 +615,12 @@
     showLoader(true);
 
     try {
-      const { lat, lon, rayon } = villeSelectionnee;
+      const { lat, lon } = villeSelectionnee;
+      const rayon = getRayon();
       const f = cat.overpassFilter;
+
+      // Adapter le zoom de la carte au rayon choisi
+      map.setView([lat, lon], raisonZoom(rayon));
 
       const query = `[out:json][timeout:25];(node${f}(around:${rayon},${lat},${lon});way${f}(around:${rayon},${lat},${lon});relation${f}(around:${rayon},${lat},${lon}););out center;`;
 
