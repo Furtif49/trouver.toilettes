@@ -1,8 +1,8 @@
 {
-  "name": "Fontaines & Toilettes",
-  "short_name": "Fontaines",
-  "description": "Trouve fontaines et toilettes publiques en France",
-  "start_url": "/trouver.toilettes/index.html",
+  "name": "PipiMap",
+  "short_name": "PipiMap",
+  "description": "Trouve fontaines, toilettes, tables de pique-nique et parkings autour de toi en France",
+  "start_url": "https://shibabalin.github.io/trouver.toilettes/index.html",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0f1923",
