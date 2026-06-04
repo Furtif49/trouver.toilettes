@@ -435,7 +435,7 @@
           id="search-input"
           type="search"
           inputmode="search"
-          placeholder="Ville en France…"
+          placeholder="Adresse ou ville en France…"
           autocomplete="off"
           autocorrect="off"
           spellcheck="false"
@@ -640,7 +640,8 @@
 
   async function fetchSuggestions(q) {
     try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&countrycodes=fr&format=json&limit=5&addressdetails=1`;
+      // Pas de filtre de type : accepte villes, adresses, lieux-dits, etc.
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&countrycodes=fr&format=json&limit=6&addressdetails=1`;
       const res  = await fetch(url, { headers: { 'Accept-Language': 'fr', 'User-Agent': 'FountainFinder/1.0' } });
       const data = await res.json();
       afficherSuggestions(data);
@@ -652,11 +653,19 @@
     if (!resultats.length) { hideSuggestions(); return; }
     resultats.forEach(r => {
       const li = document.createElement('li');
-      // Afficher seulement le nom court (commune + département)
       const addr = r.address || {};
-      const nom = addr.city || addr.town || addr.village || addr.municipality || r.display_name.split(',')[0];
-      const dept = addr.county || addr.state || '';
-      li.textContent = dept ? `${nom} — ${dept}` : nom;
+
+      // Construire un libellé lisible selon le type de résultat
+      const rue    = addr.house_number ? `${addr.house_number} ${addr.road || ''}`.trim() : (addr.road || '');
+      const ville  = addr.city || addr.town || addr.village || addr.municipality || '';
+      const dept   = addr.county || addr.state || '';
+
+      let libelle;
+      if (rue && ville)       libelle = `${rue}, ${ville}`;
+      else if (ville && dept) libelle = `${ville} — ${dept}`;
+      else                    libelle = r.display_name.split(',').slice(0,2).join(',').trim();
+
+      li.textContent = libelle;
       li.addEventListener('click', () => choisirVille(r));
       suggestions.appendChild(li);
     });
@@ -674,7 +683,9 @@
 
   function choisirVille(r) {
     const addr = r.address || {};
-    const nom = addr.city || addr.town || addr.village || r.display_name.split(',')[0];
+    const rue   = addr.house_number ? `${addr.house_number} ${addr.road || ''}`.trim() : (addr.road || '');
+    const ville = addr.city || addr.town || addr.village || addr.municipality || '';
+    const nom   = rue && ville ? `${rue}, ${ville}` : ville || r.display_name.split(',')[0];
     searchInput.value = nom;
     hideSuggestions();
     searchInput.blur(); // ferme le clavier mobile
