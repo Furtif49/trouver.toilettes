@@ -640,9 +640,28 @@
 
   async function fetchSuggestions(q) {
     try {
-      // Pas de filtre de type : accepte villes, adresses, lieux-dits, etc.
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&countrycodes=fr&format=json&limit=6&addressdetails=1`;
-      const res  = await fetch(url, { headers: { 'Accept-Language': 'fr', 'User-Agent': 'FountainFinder/1.0' } });
+      // Détecter si la saisie commence par un numéro (ex: "15 rue de Rennes Angers")
+      const debuteParNumero = /^\d+\s+/.test(q.trim());
+      let url;
+
+      if (debuteParNumero) {
+        // Extraire le numéro et le reste séparément pour une recherche structurée
+        // Nominatim structured search : &street=15 rue de Rennes&city=Angers
+        // On sépare le numéro du reste et on force house_number via le paramètre street
+        const match = q.trim().match(/^(\d+)\s+(.+)$/);
+        if (match) {
+          // Tenter d'abord avec q structuré (numéro + rue dans street)
+          // Nominatim interprète mieux "15, rue de Rennes, Angers" avec la virgule
+          const qStructure = match[1] + ', ' + match[2];
+          url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(qStructure)}&countrycodes=fr&format=json&limit=6&addressdetails=1`;
+        } else {
+          url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&countrycodes=fr&format=json&limit=6&addressdetails=1`;
+        }
+      } else {
+        url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&countrycodes=fr&format=json&limit=6&addressdetails=1`;
+      }
+
+      const res  = await fetch(url, { headers: { 'Accept-Language': 'fr', 'User-Agent': 'PipiMap/1.0' } });
       const data = await res.json();
       afficherSuggestions(data);
     } catch { hideSuggestions(); }
@@ -693,9 +712,18 @@
     const lat = parseFloat(r.lat);
     const lon = parseFloat(r.lon);
 
+    // Vérifier que les coordonnées sont précises (numéro de rue trouvé)
+    // Si house_number présent dans addr → coordonnées précises au numéro
+    // Sinon → coordonnées au centre de la rue (moins précis)
+    const precis = !!addr.house_number;
+    if (!precis && addr.road) {
+      toast('💡 Numéro non trouvé, centré sur la rue. Ajoute la ville pour plus de précision.');
+    }
+
     // Toujours activer le tri par distance (comme la géolocalisation)
     villeSelectionnee = { lat, lon, nom, geolocated: true };
-    map.setView([lat, lon], raisonZoom(getRayon()));
+    // Zoom plus fort si adresse précise au numéro
+    map.setView([lat, lon], precis ? 17 : raisonZoom(getRayon()));
 
     // Point rouge sur l'adresse saisie
     if (marqueurPosition) map.removeLayer(marqueurPosition);
