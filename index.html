@@ -688,10 +688,33 @@
     const nom   = rue && ville ? `${rue}, ${ville}` : ville || r.display_name.split(',')[0];
     searchInput.value = nom;
     hideSuggestions();
-    searchInput.blur(); // ferme le clavier mobile
+    searchInput.blur();
 
-    villeSelectionnee = { lat: parseFloat(r.lat), lon: parseFloat(r.lon), nom };
-    map.setView([villeSelectionnee.lat, villeSelectionnee.lon], 15);
+    const lat = parseFloat(r.lat);
+    const lon = parseFloat(r.lon);
+
+    // Toujours activer le tri par distance (comme la géolocalisation)
+    villeSelectionnee = { lat, lon, nom, geolocated: true };
+    map.setView([lat, lon], raisonZoom(getRayon()));
+
+    // Point rouge sur l'adresse saisie
+    if (marqueurPosition) map.removeLayer(marqueurPosition);
+    const iconPos = L.divIcon({
+      html: `<div style="
+        width:16px; height:16px;
+        background:#e53935;
+        border:3px solid white;
+        border-radius:50%;
+        box-shadow:0 0 0 3px rgba(229,57,53,0.4);
+        animation:pulse 1.5s ease-in-out infinite;
+      "></div>`,
+      className: '',
+      iconSize: [16, 16],
+      iconAnchor: [8, 8]
+    });
+    marqueurPosition = L.marker([lat, lon], { icon: iconPos, zIndexOffset: 1000 })
+      .bindPopup(`<strong>📍 ${nom}</strong>`)
+      .addTo(map);
   }
 
   // Rayon choisi par l'utilisateur (depuis le sélecteur)
