@@ -116,57 +116,96 @@
 
     /* ── Boutons catégories ── */
     .btn-row {
-      display: flex;
-      gap: 8px;
+      display: grid;
+      /* Mobile : 2 colonnes + 1 seul bouton centré sur la dernière ligne */
+      grid-template-columns: repeat(2, 1fr);
+      gap: 7px;
+    }
+
+    /* Le 5e bouton (vélo) prend toute la largeur sur mobile */
+    .btn-row .btn:last-child:nth-child(odd) {
+      grid-column: 1 / -1;
+      max-width: 50%;
+      margin: 0 auto;
+      width: 100%;
     }
 
     .btn {
-      flex: 1;
-      padding: 11px 8px;
+      padding: 10px 6px;
       border: none;
       border-radius: 10px;
       cursor: pointer;
-      font-size: 0.95rem;
+      font-size: 0.82rem;
       font-weight: 700;
-      min-height: 46px;
+      min-height: 44px;
       transition: transform .1s, opacity .1s;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 5px;
+      gap: 4px;
+      white-space: nowrap;
     }
 
     .btn:active { transform: scale(0.96); opacity: 0.85; }
 
-    #btn-fontaines {
-      background: #4fc3f7;
-      color: #003d5c;
-    }
-    #btn-fontaines.active { background: #0277bd; color: white; }
-
-    #btn-toilettes {
-      background: #ce93d8;
-      color: #3a003d;
-    }
-    #btn-toilettes.active { background: #7b1fa2; color: white; }
-
-    #btn-piquenique {
-      background: #aed581;
-      color: #1b3a00;
-    }
+    #btn-fontaines  { background: #4fc3f7; color: #003d5c; }
+    #btn-fontaines.active  { background: #0277bd; color: white; }
+    #btn-toilettes  { background: #ce93d8; color: #3a003d; }
+    #btn-toilettes.active  { background: #7b1fa2; color: white; }
+    #btn-piquenique { background: #aed581; color: #1b3a00; }
     #btn-piquenique.active { background: #558b2f; color: white; }
+    #btn-parking    { background: #b0bec5; color: #1a2329; }
+    #btn-parking.active    { background: #37474f; color: white; }
+    #btn-velostop   { background: #ffcc80; color: #3e2000; }
+    #btn-velostop.active   { background: #e65100; color: white; }
 
-    #btn-parking {
-      background: #b0bec5;
-      color: #1a2329;
+    /* ── Tablette : 3 colonnes ── */
+    @media (min-width: 600px) {
+      .btn-row {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .btn-row .btn:last-child:nth-child(odd) {
+        grid-column: auto;
+        max-width: none;
+        margin: 0;
+      }
+      .btn {
+        font-size: 0.9rem;
+        padding: 11px 10px;
+      }
     }
-    #btn-parking.active { background: #37474f; color: white; }
 
-    #btn-velostop {
-      background: #ffcc80;
-      color: #3e2000;
+    /* ── Desktop : tout sur une ligne ── */
+    @media (min-width: 900px) {
+      header {
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: nowrap;
+        gap: 12px;
+        padding: 10px 20px;
+      }
+      .header-top {
+        flex: 1;
+        min-width: 0;
+      }
+      .btn-row {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+      .btn-row .btn:last-child:nth-child(odd) {
+        grid-column: auto;
+        max-width: none;
+        margin: 0;
+        width: auto;
+      }
+      .btn {
+        font-size: 0.88rem;
+        padding: 10px 12px;
+        white-space: nowrap;
+      }
     }
-    #btn-velostop.active { background: #e65100; color: white; }
 
     /* ══════════════════════════════════
        CARTE — prend tout l'espace restant
@@ -327,9 +366,9 @@
       color: white;
       border: 1.5px solid rgba(255,255,255,0.35);
       border-radius: 8px;
-      padding: 0 8px;
+      padding: 0 6px;
       min-height: 44px;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: 600;
       cursor: pointer;
       flex-shrink: 0;
@@ -337,8 +376,13 @@
       appearance: none;
       -webkit-appearance: none;
       text-align: center;
+      width: 68px;
     }
     #rayon-select option { background: #1a6fbf; color: white; }
+
+    @media (min-width: 600px) {
+      #rayon-select { width: 80px; font-size: 0.85rem; }
+    }
 
     /* ══════════════════════════════════
        BOUTON LOCALISATION
@@ -347,10 +391,10 @@
       background: white;
       border: none;
       border-radius: 10px;
-      padding: 0 12px;
+      padding: 0 11px;
       min-height: 44px;
       cursor: pointer;
-      font-size: 1.25rem;
+      font-size: 1.2rem;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -358,6 +402,18 @@
       flex-shrink: 0;
     }
     #btn-locate:active { opacity: 0.7; }
+
+    /* ══════════════════════════════════
+       POPUP — plus large sur desktop
+    ══════════════════════════════════ */
+    @media (min-width: 900px) {
+      .leaflet-popup-content {
+        min-width: 220px;
+        font-size: 1rem;
+      }
+      .popup-sig-btn { font-size: 0.9rem; padding: 10px 8px; }
+      .popup-btn     { font-size: 1.05rem; padding: 12px 16px; }
+    }
   </style>
 </head>
 <body>
