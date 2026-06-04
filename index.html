@@ -240,7 +240,11 @@
       border-radius: 50%;
       animation: spin .75s linear infinite;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin  { to { transform: rotate(360deg); } }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 3px rgba(229,57,53,0.4); }
+      50%       { box-shadow: 0 0 0 8px rgba(229,57,53,0.0); }
+    }
 
     /* ══════════════════════════════════
        TOAST
@@ -555,9 +559,10 @@
 
   let markersLayer = L.layerGroup().addTo(map);
   let villeSelectionnee = null;
+  let marqueurPosition  = null; // point rouge "ma position"
 
   // ═══════════════════════════════════════════════════
-  // GEOLOCALISATION
+  // GEOLOCALISATION — point rouge + tri par distance
   // ═══════════════════════════════════════════════════
   function localiserMoi() {
     if (!navigator.geolocation) { toast('Géolocalisation non disponible.'); return; }
@@ -567,9 +572,32 @@
       pos => {
         btn.textContent = '📍';
         const { latitude: lat, longitude: lon } = pos.coords;
-        villeSelectionnee = { lat, lon, nom: 'Ma position' };
+        villeSelectionnee = { lat, lon, nom: 'Ma position', geolocated: true };
         map.setView([lat, lon], raisonZoom(getRayon()));
         document.getElementById('search-input').value = 'Ma position';
+
+        // Supprimer l'ancien point de position
+        if (marqueurPosition) map.removeLayer(marqueurPosition);
+
+        // Point rouge pulsant pour indiquer la position de l'utilisateur
+        const iconPos = L.divIcon({
+          html: `<div style="
+            width:16px; height:16px;
+            background:#e53935;
+            border:3px solid white;
+            border-radius:50%;
+            box-shadow:0 0 0 3px rgba(229,57,53,0.4);
+            animation:pulse 1.5s ease-in-out infinite;
+          "></div>`,
+          className: '',
+          iconSize: [16, 16],
+          iconAnchor: [8, 8]
+        });
+
+        marqueurPosition = L.marker([lat, lon], { icon: iconPos, zIndexOffset: 1000 })
+          .bindPopup('<strong>📍 Vous êtes ici</strong>')
+          .addTo(map);
+
         toast('Position trouvée. Choisis une catégorie.');
       },
       () => {
@@ -578,6 +606,20 @@
       },
       { timeout: 10000 }
     );
+  }
+
+  // Calcul de distance en mètres entre deux points (Haversine simplifié)
+  function distanceMetres(lat1, lon1, lat2, lon2) {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) ** 2 +
+              Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dLon/2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  function formatDistance(m) {
+    return m < 1000 ? `${Math.round(m)} m` : `${(m/1000).toFixed(1)} km`;
   }
 
   // ═══════════════════════════════════════════════════
@@ -702,14 +744,28 @@
         return;
       }
 
-      elements.forEach(el => {
-        // nodes → lat/lon direct ; ways/relations → center
+      // Si géolocalisé : calculer la distance et trier du plus proche au plus loin
+      const userLat = villeSelectionnee.geolocated ? villeSelectionnee.lat : null;
+      const userLon = villeSelectionnee.geolocated ? villeSelectionnee.lon : null;
+
+      // Enrichir chaque élément avec ses coordonnées et sa distance
+      const enrichis = elements.map(el => {
         const eLat = el.lat ?? el.center?.lat;
         const eLon = el.lon ?? el.center?.lon;
-        if (!eLat || !eLon) return;
+        const dist = (userLat && eLat) ? distanceMetres(userLat, userLon, eLat, eLon) : null;
+        return { ...el, eLat, eLon, dist };
+      }).filter(el => el.eLat && el.eLon);
 
-        const iconContent = cat.svg
-          ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+      // Trier par distance si géolocalisé
+      if (userLat) enrichis.sort((a, b) => a.dist - b.dist);
+
+      let premierOuvert = true; // pour ouvrir le popup du plus proche
+
+      enrichis.forEach(el => {
+        const { eLat, eLon, dist } = el;
+
+        const estLePlusProche = userLat && premierOuvert;
+        const svgContent = `<svg width="16" height="16" viewBox="0 0 24 24" fill="white">
                <rect x="2" y="9" width="20" height="2.5" rx="1.2"/>
                <rect x="11" y="11.5" width="2" height="5" rx="1"/>
                <rect x="1" y="16.5" width="9" height="2" rx="1"/>
@@ -718,15 +774,25 @@
                <rect x="7" y="18.5" width="1.5" height="2.5" rx="0.7"/>
                <rect x="15.5" y="18.5" width="1.5" height="2.5" rx="0.7"/>
                <rect x="20" y="18.5" width="1.5" height="2.5" rx="0.7"/>
-             </svg>`
-          : cat.emoji;
+             </svg>`;
+        const iconContent = cat.svg ? svgContent : cat.emoji;
+
+        // Le plus proche : marqueur plus grand avec étoile dorée
+        const taille = estLePlusProche ? 42 : 32;
+        const border = estLePlusProche ? '3px solid #FFD600' : '2.5px solid white';
+        const shadow = estLePlusProche
+          ? '0 0 0 3px rgba(255,214,0,0.5), 0 3px 10px rgba(0,0,0,.5)'
+          : '0 2px 8px rgba(0,0,0,.45)';
 
         const icon = L.divIcon({
-          html: `<div style="background:${cat.couleur};border:2.5px solid white;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 2px 8px rgba(0,0,0,.45);">${iconContent}</div>`,
+          html: `<div style="background:${cat.couleur};border:${border};border-radius:50%;width:${taille}px;height:${taille}px;display:flex;align-items:center;justify-content:center;font-size:${estLePlusProche?18:15}px;box-shadow:${shadow};position:relative;">
+                   ${iconContent}
+                   ${estLePlusProche ? '<div style="position:absolute;top:-8px;right:-4px;font-size:13px;">⭐</div>' : ''}
+                 </div>`,
           className: '',
-          iconSize: [32, 32],
-          iconAnchor: [16, 16],
-          popupAnchor: [0, -18]
+          iconSize: [taille, taille],
+          iconAnchor: [taille/2, taille/2],
+          popupAnchor: [0, -(taille/2 + 4)]
         });
 
         const marker = L.marker([eLat, eLon], { icon });
@@ -734,18 +800,29 @@
         const nom    = el.tags?.name || el.tags?.['name:fr'] || '';
         const acces  = el.tags?.access === 'private' ? 'Accès privé' : el.tags?.fee === 'yes' ? 'Payant' : '';
         const osm_id = `${el.type}-${el.id}`;
+        // Passer la distance au popup pour l'afficher
+        const distLabel = dist !== null ? formatDistance(dist) : null;
 
-        // creerPopup est async : on crée le div vide, Firebase remplit l'état ensuite
         marker.on('click', async () => {
-          const content = await creerPopup(osm_id, cat, nom, acces, gmaps);
+          const content = await creerPopup(osm_id, cat, nom, acces, gmaps, distLabel);
           marker.bindPopup(content, { maxWidth: 240 }).openPopup();
         });
 
         markersLayer.addLayer(marker);
+
+        // Ouvrir automatiquement le popup du plus proche
+        if (estLePlusProche) {
+          premierOuvert = false;
+          setTimeout(async () => {
+            const content = await creerPopup(osm_id, cat, nom, acces, gmaps, distLabel);
+            marker.bindPopup(content, { maxWidth: 240 }).openPopup();
+          }, 400);
+        }
       });
 
-      const n = elements.length;
-      toast(`${n} ${cat.label.toLowerCase()}${n > 1 ? 's' : ''} trouvée${n > 1 ? 's' : ''}`);
+      const n = enrichis.length;
+      const distMsg = userLat ? ` · Le plus proche à ${formatDistance(enrichis[0].dist)}` : '';
+      toast(`${n} ${cat.label.toLowerCase()}${n > 1 ? 's' : ''} trouvée${n > 1 ? 's' : ''}${distMsg}`);
 
     } catch (err) {
       console.error(err);
@@ -824,7 +901,7 @@
     return { votes, action };
   }
 
-  async function creerPopup(osm_id, cat, nom, acces, gmaps) {
+  async function creerPopup(osm_id, cat, nom, acces, gmaps, distLabel = null) {
     const div = document.createElement('div');
 
     const titleHtml = cat.svg
@@ -833,8 +910,9 @@
 
     div.innerHTML = `
       <div class="popup-title">${titleHtml}${cat.label}</div>
-      ${nom   ? `<div class="popup-sub">${nom}</div>` : ''}
-      ${acces ? `<div class="popup-sub">${acces}</div>` : ''}
+      ${nom      ? `<div class="popup-sub">${nom}</div>` : ''}
+      ${acces    ? `<div class="popup-sub">${acces}</div>` : ''}
+      ${distLabel ? `<div class="popup-sub" style="color:#1a6fbf;font-weight:700;">📏 ${distLabel}</div>` : ''}
       <div class="popup-votes">
         <div class="vote-bloc ok" id="bloc-ok-${osm_id}">
           <div class="vote-count" id="vote-ok-${osm_id}">…</div>
