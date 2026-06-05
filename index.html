@@ -648,10 +648,12 @@
   // Contrôle zoom en bas à droite
   L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-  let markersLayer     = L.layerGroup().addTo(map);
+  let markersLayer      = L.layerGroup().addTo(map);
   let villeSelectionnee = null;
   let marqueurPosition  = null; // point rouge position/adresse
   let modeRepere        = false; // true quand l'utilisateur pose un repère manuellement
+  let derniereRecherche = [];   // liste triée des éléments de la dernière recherche
+  let derniereCat       = null; // catégorie de la dernière recherche
 
   // ═══════════════════════════════════════════════════
   // REPERE MANUEL — clic sur la carte pour poser un point
@@ -971,7 +973,11 @@
       // Trier par distance si géolocalisé
       if (userLat) enrichis.sort((a, b) => a.dist - b.dist);
 
-      let premierOuvert = true; // pour ouvrir le popup du plus proche
+      // Stocker pour pouvoir naviguer vers le suivant depuis le drawer
+      derniereRecherche = enrichis;
+      derniereCat = cat;
+
+      let premierOuvert = true; // pour ouvrir le drawer du plus proche
 
       enrichis.forEach(el => {
         const { eLat, eLon, dist } = el;
@@ -1015,15 +1021,17 @@
         // Passer la distance au popup pour l'afficher
         const distLabel = dist !== null ? formatDistance(dist) : null;
 
+        const idx = enrichis.indexOf(el);
+
         // Ouvrir le drawer au clic sur le marqueur
-        marker.on('click', () => ouvrirDrawer(osm_id, cat, nom, acces, gmaps, distLabel));
+        marker.on('click', () => ouvrirDrawer(idx, osm_id, cat, nom, acces, gmaps, distLabel));
 
         markersLayer.addLayer(marker);
 
         // Ouvrir automatiquement le drawer du plus proche
         if (estLePlusProche) {
           premierOuvert = false;
-          setTimeout(() => ouvrirDrawer(osm_id, cat, nom, acces, gmaps, distLabel), 500);
+          setTimeout(() => ouvrirDrawer(idx, osm_id, cat, nom, acces, gmaps, distLabel), 500);
         }
       });
 
@@ -1111,7 +1119,7 @@
   // ═══════════════════════════════════════════════════
   // DRAWER — ouvrir / fermer
   // ═══════════════════════════════════════════════════
-  function ouvrirDrawer(osm_id, cat, nom, acces, gmaps, distLabel = null) {
+  function ouvrirDrawer(idx, osm_id, cat, nom, acces, gmaps, distLabel = null) {
     const svgIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;margin-right:5px"><rect x="2" y="9" width="20" height="2.5" rx="1.2"/><rect x="11" y="11.5" width="2" height="5" rx="1"/><rect x="1" y="16.5" width="9" height="2" rx="1"/><rect x="14" y="16.5" width="9" height="2" rx="1"/><rect x="2.5" y="18.5" width="1.5" height="2.5" rx="0.7"/><rect x="7" y="18.5" width="1.5" height="2.5" rx="0.7"/><rect x="15.5" y="18.5" width="1.5" height="2.5" rx="0.7"/><rect x="20" y="18.5" width="1.5" height="2.5" rx="0.7"/></svg>`;
     const titleIcon = cat.svg ? svgIcon : cat.emoji + ' ';
 
@@ -1138,6 +1146,7 @@
         <button class="popup-sig-btn fonctionne" id="btn-ok-${osm_id}" onclick="signalerEtat('${osm_id}', true)">✅ Ça marche</button>
         <button class="popup-sig-btn hs"         id="btn-ko-${osm_id}" onclick="signalerEtat('${osm_id}', false)">❌ Hors service</button>
       </div>
+      <div id="btn-suivant-wrap-${osm_id}"></div>
       <a class="popup-btn" href="${gmaps}" target="_blank">🗺️ Itinéraire</a>
     `;
 
@@ -1147,7 +1156,48 @@
 
     // Charger les votes Firebase — vider le cache pour toujours avoir la valeur fraîche
     delete votesCache[osm_id];
-    getVotes(osm_id).then(v => afficherVotes(osm_id, v));
+    getVotes(osm_id).then(v => {
+      afficherVotes(osm_id, v);
+      // Afficher le bouton "Autre emplacement" si hors service majoritaire
+      afficherBoutonSuivant(osm_id, idx, v);
+    });
+  }
+
+  function afficherBoutonSuivant(osm_id, idx, votes) {
+    const wrap = document.getElementById('btn-suivant-wrap-' + osm_id);
+    if (!wrap) return;
+
+    // Hors service si plus de "ko" que de "ok" ET au moins 1 avis
+    const estHorsService = (votes.ko || 0) > (votes.ok || 0) && ((votes.ok || 0) + (votes.ko || 0)) > 0;
+    const suivant = derniereRecherche[idx + 1];
+
+    if (estHorsService && suivant) {
+      const dist = suivant.dist !== null ? ` (${formatDistance(suivant.dist)})` : '';
+      wrap.innerHTML = `
+        <button onclick="allerAuSuivant(${idx + 1})" style="
+          width:100%; margin-top:10px; padding:13px;
+          background:#fff3e0; color:#e65100;
+          border:2px solid #ffcc80; border-radius:12px;
+          font-size:0.95rem; font-weight:700; cursor:pointer;
+        ">📍 Voir l'emplacement suivant${dist}</button>
+      `;
+    }
+  }
+
+  function allerAuSuivant(idx) {
+    const el  = derniereRecherche[idx];
+    if (!el) return;
+    const cat       = derniereCat;
+    const osm_id    = `${el.type}-${el.id}`;
+    const nom       = el.tags?.name || el.tags?.['name:fr'] || '';
+    const acces     = el.tags?.access === 'private' ? 'Accès privé' : el.tags?.fee === 'yes' ? 'Payant' : '';
+    const gmaps     = `https://www.google.com/maps/dir/?api=1&destination=${el.eLat},${el.eLon}`;
+    const distLabel = el.dist !== null ? formatDistance(el.dist) : null;
+
+    // Centrer la carte sur ce marqueur
+    map.setView([el.eLat, el.eLon], map.getZoom());
+
+    ouvrirDrawer(idx, osm_id, cat, nom, acces, gmaps, distLabel);
   }
 
   function fermerDrawer() {
