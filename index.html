@@ -271,113 +271,168 @@
     #toast.show { opacity: 1; }
 
     /* ══════════════════════════════════
-       POPUP LEAFLET — adapté mobile
+       DRAWER — panneau glissant du bas
     ══════════════════════════════════ */
-    .leaflet-popup-content {
-      font-size: 0.95rem;
-      line-height: 1.5;
-      min-width: 160px;
+
+    /* Masquer les popups Leaflet natifs — on utilise le drawer */
+    .leaflet-popup { display: none !important; }
+
+    /* Fond sombre derrière le drawer */
+    #drawer-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 2000;
+      animation: fadeIn .25s ease;
+    }
+    #drawer-overlay.visible { display: block; }
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+
+    /* Le drawer lui-même */
+    #drawer {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: white;
+      border-radius: 20px 20px 0 0;
+      z-index: 2001;
+      padding: 0 20px 20px;
+      padding-bottom: max(20px, env(safe-area-inset-bottom));
+      max-height: 85vh;
+      overflow-y: auto;
+      transform: translateY(100%);
+      transition: transform .3s cubic-bezier(.32,1,.23,1);
+      box-shadow: 0 -4px 30px rgba(0,0,0,.2);
+    }
+    #drawer.visible { transform: translateY(0); }
+
+    /* Poignée en haut du drawer */
+    .drawer-handle {
+      width: 40px; height: 5px;
+      background: #ddd;
+      border-radius: 3px;
+      margin: 12px auto 16px;
     }
 
-    /* Bouton fermeture popup — agrandi pour mobile */
-    .leaflet-popup-close-button {
-      width: 36px !important;
-      height: 36px !important;
-      font-size: 22px !important;
-      line-height: 36px !important;
-      top: 4px !important;
-      right: 4px !important;
-      color: #333 !important;
-      font-weight: 700 !important;
+    /* Header du drawer : titre + bouton X */
+    .drawer-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
     }
-    .leaflet-popup-close-button:hover { color: #000 !important; }
 
-    .popup-title {
+    .drawer-title {
+      font-weight: 800;
+      font-size: 1.15rem;
+      color: #111;
+      line-height: 1.3;
+      flex: 1;
+    }
+
+    .drawer-close {
+      width: 36px; height: 36px;
+      border: none;
+      background: #f0f0f0;
+      border-radius: 50%;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: #555;
       font-weight: 700;
-      font-size: 1rem;
+    }
+    .drawer-close:active { background: #e0e0e0; }
+
+    .drawer-sub {
+      color: #888;
+      font-size: 0.85rem;
       margin-bottom: 4px;
     }
 
-    .popup-sub {
-      color: #666;
-      font-size: 0.82rem;
-      margin-bottom: 10px;
-    }
-
-    .popup-btn {
-      display: block;
-      text-align: center;
-      background: none;
+    .drawer-dist {
       color: #1a6fbf;
-      padding: 10px 0 2px;
-      border-radius: 0;
-      text-decoration: none;
-      font-size: 1.2rem;
-      font-weight: 900;
-      letter-spacing: 0.02em;
-      border: none;
-      border-top: 2px solid #e0e0e0;
-      margin-top: 12px;
+      font-weight: 700;
+      font-size: 0.92rem;
+      margin-bottom: 12px;
     }
-    .popup-btn:active { opacity: 0.6; }
 
-    /* ── Votes scindés ── */
+    /* Votes */
     .popup-votes {
       display: flex;
-      gap: 6px;
-      margin: 10px 0 4px;
+      gap: 8px;
+      margin: 12px 0 4px;
     }
     .vote-bloc {
       flex: 1;
-      border-radius: 9px;
-      padding: 7px 6px 6px;
+      border-radius: 12px;
+      padding: 10px 8px 8px;
       text-align: center;
-      border: 1.5px solid transparent;
+      border: 2px solid transparent;
     }
     .vote-bloc.ok  { background: #e8f5e9; border-color: #a5d6a7; }
     .vote-bloc.ko  { background: #ffebee; border-color: #ef9a9a; }
     .vote-count {
-      font-size: 1.3rem;
+      font-size: 1.6rem;
       font-weight: 800;
       line-height: 1;
     }
     .vote-bloc.ok  .vote-count { color: #2e7d32; }
     .vote-bloc.ko  .vote-count { color: #c62828; }
     .vote-label {
-      font-size: 0.72rem;
+      font-size: 0.75rem;
       font-weight: 600;
-      margin-top: 2px;
+      margin-top: 3px;
     }
     .vote-bloc.ok .vote-label { color: #388e3c; }
     .vote-bloc.ko .vote-label { color: #d32f2f; }
 
     .popup-last-date {
-      font-size: 0.74rem;
-      color: #aaa;
+      font-size: 0.76rem;
+      color: #bbb;
       text-align: center;
-      margin-bottom: 6px;
+      margin-bottom: 10px;
     }
 
     /* Boutons signalement */
     .popup-signalement {
       display: flex;
-      gap: 6px;
-      margin-top: 6px;
+      gap: 8px;
+      margin-top: 8px;
     }
     .popup-sig-btn {
       flex: 1;
-      padding: 8px 4px;
+      padding: 13px 8px;
       border: none;
-      border-radius: 7px;
-      font-size: 0.82rem;
-      font-weight: 600;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
       cursor: pointer;
       text-align: center;
     }
-    .popup-sig-btn.fonctionne  { background: #e8f5e9; color: #2e7d32; border: 1.5px solid #a5d6a7; }
+    .popup-sig-btn.fonctionne  { background: #e8f5e9; color: #2e7d32; border: 2px solid #a5d6a7; }
     .popup-sig-btn.fonctionne:active { background: #c8e6c9; }
-    .popup-sig-btn.hs          { background: #ffebee; color: #c62828; border: 1.5px solid #ef9a9a; }
+    .popup-sig-btn.hs          { background: #ffebee; color: #c62828; border: 2px solid #ef9a9a; }
     .popup-sig-btn.hs:active   { background: #ffcdd2; }
+
+    /* Bouton itinéraire */
+    .popup-btn {
+      display: block;
+      text-align: center;
+      background: none;
+      color: #1a6fbf;
+      padding: 14px 0 2px;
+      text-decoration: none;
+      font-size: 1.25rem;
+      font-weight: 900;
+      border: none;
+      border-top: 2px solid #eee;
+      margin-top: 14px;
+    }
+    .popup-btn:active { opacity: 0.6; }
 
     /* ── Sélecteur de rayon ── */
     #rayon-select {
@@ -430,16 +485,17 @@
       box-shadow: 0 0 0 3px rgba(255,111,0,0.4);
     }
 
-    /* ══════════════════════════════════
-       POPUP — plus large sur desktop
-    ══════════════════════════════════ */
-    @media (min-width: 900px) {
-      .leaflet-popup-content {
-        min-width: 220px;
-        font-size: 1rem;
+    /* Desktop : drawer limité en largeur et centré */
+    @media (min-width: 600px) {
+      #drawer {
+        left: 50%;
+        transform: translateX(-50%) translateY(100%);
+        width: 480px;
+        border-radius: 20px 20px 0 0;
       }
-      .popup-sig-btn { font-size: 0.9rem; padding: 10px 8px; }
-      .popup-btn     { font-size: 1.25rem; }
+      #drawer.visible {
+        transform: translateX(-50%) translateY(0);
+      }
     }
   </style>
 </head>
@@ -514,6 +570,15 @@
   <!-- CARTE -->
   <div id="map"></div>
 
+</div>
+
+<!-- DRAWER OVERLAY -->
+<div id="drawer-overlay" onclick="fermerDrawer()"></div>
+
+<!-- DRAWER -->
+<div id="drawer">
+  <div class="drawer-handle"></div>
+  <div id="drawer-content"></div>
 </div>
 
 <!-- LOADER -->
@@ -950,20 +1015,15 @@
         // Passer la distance au popup pour l'afficher
         const distLabel = dist !== null ? formatDistance(dist) : null;
 
-        marker.on('click', async () => {
-          const content = await creerPopup(osm_id, cat, nom, acces, gmaps, distLabel);
-          marker.bindPopup(content, { maxWidth: 240 }).openPopup();
-        });
+        // Ouvrir le drawer au clic sur le marqueur
+        marker.on('click', () => ouvrirDrawer(osm_id, cat, nom, acces, gmaps, distLabel));
 
         markersLayer.addLayer(marker);
 
-        // Ouvrir automatiquement le popup du plus proche
+        // Ouvrir automatiquement le drawer du plus proche
         if (estLePlusProche) {
           premierOuvert = false;
-          setTimeout(async () => {
-            const content = await creerPopup(osm_id, cat, nom, acces, gmaps, distLabel);
-            marker.bindPopup(content, { maxWidth: 240 }).openPopup();
-          }, 400);
+          setTimeout(() => ouvrirDrawer(osm_id, cat, nom, acces, gmaps, distLabel), 500);
         }
       });
 
@@ -1048,29 +1108,32 @@
     return { votes, action };
   }
 
-  async function creerPopup(osm_id, cat, nom, acces, gmaps, distLabel = null) {
-    const div = document.createElement('div');
+  // ═══════════════════════════════════════════════════
+  // DRAWER — ouvrir / fermer
+  // ═══════════════════════════════════════════════════
+  function ouvrirDrawer(osm_id, cat, nom, acces, gmaps, distLabel = null) {
+    const svgIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;margin-right:5px"><rect x="2" y="9" width="20" height="2.5" rx="1.2"/><rect x="11" y="11.5" width="2" height="5" rx="1"/><rect x="1" y="16.5" width="9" height="2" rx="1"/><rect x="14" y="16.5" width="9" height="2" rx="1"/><rect x="2.5" y="18.5" width="1.5" height="2.5" rx="0.7"/><rect x="7" y="18.5" width="1.5" height="2.5" rx="0.7"/><rect x="15.5" y="18.5" width="1.5" height="2.5" rx="0.7"/><rect x="20" y="18.5" width="1.5" height="2.5" rx="0.7"/></svg>`;
+    const titleIcon = cat.svg ? svgIcon : cat.emoji + ' ';
 
-    const titleHtml = cat.svg
-      ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;margin-right:4px"><rect x="2" y="9" width="20" height="2.5" rx="1.2"/><rect x="11" y="11.5" width="2" height="5" rx="1"/><rect x="1" y="16.5" width="9" height="2" rx="1"/><rect x="14" y="16.5" width="9" height="2" rx="1"/><rect x="2.5" y="18.5" width="1.5" height="2.5" rx="0.7"/><rect x="7" y="18.5" width="1.5" height="2.5" rx="0.7"/><rect x="15.5" y="18.5" width="1.5" height="2.5" rx="0.7"/><rect x="20" y="18.5" width="1.5" height="2.5" rx="0.7"/></svg>`
-      : cat.emoji + ' ';
-
-    div.innerHTML = `
-      <div class="popup-title">${titleHtml}${cat.label}</div>
-      ${nom      ? `<div class="popup-sub">${nom}</div>` : ''}
-      ${acces    ? `<div class="popup-sub">${acces}</div>` : ''}
-      ${distLabel ? `<div class="popup-sub" style="color:#1a6fbf;font-weight:700;">📏 ${distLabel}</div>` : ''}
+    document.getElementById('drawer-content').innerHTML = `
+      <div class="drawer-header">
+        <div class="drawer-title">${titleIcon}${cat.label}</div>
+        <button class="drawer-close" onclick="fermerDrawer()">✕</button>
+      </div>
+      ${nom   ? `<div class="drawer-sub">${nom}</div>` : ''}
+      ${acces ? `<div class="drawer-sub">${acces}</div>` : ''}
+      ${distLabel ? `<div class="drawer-dist">📏 ${distLabel}</div>` : ''}
       <div class="popup-votes">
-        <div class="vote-bloc ok" id="bloc-ok-${osm_id}">
+        <div class="vote-bloc ok">
           <div class="vote-count" id="vote-ok-${osm_id}">…</div>
           <div class="vote-label">✅ Ça marche</div>
         </div>
-        <div class="vote-bloc ko" id="bloc-ko-${osm_id}">
+        <div class="vote-bloc ko">
           <div class="vote-count" id="vote-ko-${osm_id}">…</div>
           <div class="vote-label">❌ Hors service</div>
         </div>
       </div>
-      <div class="popup-last-date" id="vote-date-${osm_id}"></div>
+      <div class="popup-last-date" id="vote-date-${osm_id}">Chargement…</div>
       <div class="popup-signalement">
         <button class="popup-sig-btn fonctionne" id="btn-ok-${osm_id}" onclick="signalerEtat('${osm_id}', true)">✅ Ça marche</button>
         <button class="popup-sig-btn hs"         id="btn-ko-${osm_id}" onclick="signalerEtat('${osm_id}', false)">❌ Hors service</button>
@@ -1078,10 +1141,22 @@
       <a class="popup-btn" href="${gmaps}" target="_blank">🗺️ Itinéraire</a>
     `;
 
-    getVotes(osm_id).then(v => afficherVotes(osm_id, v));
+    // Afficher le drawer
+    document.getElementById('drawer-overlay').classList.add('visible');
+    requestAnimationFrame(() => document.getElementById('drawer').classList.add('visible'));
 
-    return div;
+    // Charger les votes Firebase — vider le cache pour toujours avoir la valeur fraîche
+    delete votesCache[osm_id];
+    getVotes(osm_id).then(v => afficherVotes(osm_id, v));
   }
+
+  function fermerDrawer() {
+    document.getElementById('drawer').classList.remove('visible');
+    document.getElementById('drawer-overlay').classList.remove('visible');
+  }
+
+  // Fermer avec la touche Echap
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') fermerDrawer(); });
 
   function afficherVotes(osm_id, votes) {
     const okEl   = document.getElementById('vote-ok-'   + osm_id);
@@ -1095,12 +1170,9 @@
     koEl.textContent = votes.ko ?? 0;
     if (dateEl) dateEl.textContent = votes.date ? `Dernier avis le ${votes.date}` : 'Aucun avis pour le moment';
 
-    // Indiquer visuellement le vote déjà exprimé par cet appareil
     const monVote = monVoteLocal(osm_id);
-    if (btnOk) btnOk.style.fontWeight = monVote === 'ok' ? '900' : '600';
-    if (btnOk) btnOk.style.outline    = monVote === 'ok' ? '2px solid #2e7d32' : 'none';
-    if (btnKo) btnKo.style.fontWeight = monVote === 'ko' ? '900' : '600';
-    if (btnKo) btnKo.style.outline    = monVote === 'ko' ? '2px solid #c62828' : 'none';
+    if (btnOk) { btnOk.style.fontWeight = monVote === 'ok' ? '900' : '700'; btnOk.style.outline = monVote === 'ok' ? '2.5px solid #2e7d32' : 'none'; }
+    if (btnKo) { btnKo.style.fontWeight = monVote === 'ko' ? '900' : '700'; btnKo.style.outline = monVote === 'ko' ? '2.5px solid #c62828' : 'none'; }
   }
 
   async function signalerEtat(osm_id, estOk) {
