@@ -279,6 +279,19 @@
       min-width: 160px;
     }
 
+    /* Bouton fermeture popup — agrandi pour mobile */
+    .leaflet-popup-close-button {
+      width: 36px !important;
+      height: 36px !important;
+      font-size: 22px !important;
+      line-height: 36px !important;
+      top: 4px !important;
+      right: 4px !important;
+      color: #333 !important;
+      font-weight: 700 !important;
+    }
+    .leaflet-popup-close-button:hover { color: #000 !important; }
+
     .popup-title {
       font-weight: 700;
       font-size: 1rem;
@@ -393,7 +406,7 @@
     /* ══════════════════════════════════
        BOUTON LOCALISATION
     ══════════════════════════════════ */
-    #btn-locate {
+    #btn-locate, #btn-pin {
       background: white;
       border: none;
       border-radius: 10px;
@@ -407,7 +420,15 @@
       box-shadow: 0 1px 4px rgba(0,0,0,.2);
       flex-shrink: 0;
     }
-    #btn-locate:active { opacity: 0.7; }
+    #btn-locate:active, #btn-pin:active { opacity: 0.7; }
+
+    /* Mode repère actif : curseur crosshair sur la carte */
+    #map.mode-repere { cursor: crosshair; }
+    #btn-pin.actif {
+      background: #ff6f00;
+      color: white;
+      box-shadow: 0 0 0 3px rgba(255,111,0,0.4);
+    }
 
     /* ══════════════════════════════════
        POPUP — plus large sur desktop
@@ -453,6 +474,9 @@
         <option value="10000">10 km</option>
       </select>
 
+      <!-- Bouton repère manuel -->
+      <button id="btn-pin" title="Poser un repère sur la carte" onclick="activerRepere()">📌</button>
+
       <!-- Bouton géolocalisation -->
       <button id="btn-locate" title="Ma position" onclick="localiserMoi()">📍</button>
     </div>
@@ -482,7 +506,7 @@
         🅿️ Parking
       </button>
       <button id="btn-velostop" class="btn" onclick="rechercher('velostop')">
-        🚲 Vélo
+        🚲 Parking vélo
       </button>
     </div>
   </header>
@@ -559,9 +583,68 @@
   // Contrôle zoom en bas à droite
   L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-  let markersLayer = L.layerGroup().addTo(map);
+  let markersLayer     = L.layerGroup().addTo(map);
   let villeSelectionnee = null;
-  let marqueurPosition  = null; // point rouge "ma position"
+  let marqueurPosition  = null; // point rouge position/adresse
+  let modeRepere        = false; // true quand l'utilisateur pose un repère manuellement
+
+  // ═══════════════════════════════════════════════════
+  // REPERE MANUEL — clic sur la carte pour poser un point
+  // ═══════════════════════════════════════════════════
+  function activerRepere() {
+    modeRepere = !modeRepere;
+    const btnPin = document.getElementById('btn-pin');
+    const mapEl  = document.getElementById('map');
+
+    if (modeRepere) {
+      btnPin.classList.add('actif');
+      mapEl.classList.add('mode-repere');
+      toast('📌 Appuie sur la carte pour poser ton repère');
+    } else {
+      btnPin.classList.remove('actif');
+      mapEl.classList.remove('mode-repere');
+    }
+  }
+
+  // Écouter le clic sur la carte
+  map.on('click', function(e) {
+    if (!modeRepere) return;
+
+    const { lat, lng: lon } = e.latlng;
+
+    // Désactiver le mode repère
+    modeRepere = false;
+    document.getElementById('btn-pin').classList.remove('actif');
+    document.getElementById('map').classList.remove('mode-repere');
+
+    // Poser le point rouge à l'endroit cliqué
+    if (marqueurPosition) map.removeLayer(marqueurPosition);
+    const iconPos = L.divIcon({
+      html: `<div style="
+        width:18px; height:18px;
+        background:#e53935;
+        border:3px solid white;
+        border-radius:50%;
+        box-shadow:0 0 0 3px rgba(229,57,53,0.4);
+        animation:pulse 1.5s ease-in-out infinite;
+      "></div>`,
+      className: '',
+      iconSize: [18, 18],
+      iconAnchor: [9, 9]
+    });
+
+    marqueurPosition = L.marker([lat, lon], { icon: iconPos, zIndexOffset: 1000 })
+      .bindPopup('<strong>📌 Repère posé</strong><br><small>Choisis une catégorie à rechercher</small>')
+      .addTo(map);
+
+    marqueurPosition.openPopup();
+
+    // Mettre à jour le point de référence pour la recherche
+    villeSelectionnee = { lat, lon, nom: 'Repère sur la carte', geolocated: true };
+    document.getElementById('search-input').value = 'Repère sur la carte';
+
+    toast('📌 Repère posé ! Choisis maintenant une catégorie.');
+  });
 
   // ═══════════════════════════════════════════════════
   // GEOLOCALISATION — point rouge + tri par distance
